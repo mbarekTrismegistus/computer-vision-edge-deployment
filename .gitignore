@@ -1,2 +1,7 @@
-annotations.zip
-val2017.zip
+.venv/
+data/raw/
+models/
+*.zip
+*.tar.gz
+ssd_mobilenet_v2.tar.gz
+__pycache__/

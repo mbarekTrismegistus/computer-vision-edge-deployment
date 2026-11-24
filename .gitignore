@@ -5,3 +5,4 @@ models/
 *.tar.gz
 ssd_mobilenet_v2.tar.gz
 __pycache__/
+outputs/

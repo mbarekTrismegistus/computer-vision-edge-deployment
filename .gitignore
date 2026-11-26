@@ -6,3 +6,9 @@ models/
 ssd_mobilenet_v2.tar.gz
 __pycache__/
 outputs/
+# MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal

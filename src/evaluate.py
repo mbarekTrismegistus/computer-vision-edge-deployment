@@ -11,43 +11,25 @@ from tqdm import tqdm
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from src.inference import load_model, detect, MODEL_PATH
+from src.inference import load_model, detect
 from src.tflite_inference import (
     load_tflite_model,
     detect_tflite,
 )
-from src.official_inference import load_official_model, detect_official
-
-
-DATA_PATH = Path("data/raw/val2017")
-ANNOTATIONS_PATH = Path(
-    "data/raw/annotations/instances_val2017.json"
+from src.official_inference import (
+    load_official_model,
+    detect_official,
 )
-
-MODELS = {
-    "savedmodel": MODEL_PATH,
-    "fp32": Path(
-        "models/optimized/ssd_mobilenet_v2_fp32.tflite"
-    ),
-    "fp16": Path(
-        "models/optimized/ssd_mobilenet_v2_fp16.tflite"
-    ),
-    "int8": Path(
-        "models/optimized/ssd_mobilenet_v2_int8.tflite"
-    ),
-    "int8_dynamic": Path(
-        "models/optimized/ssd_mobilenet_v2_int8_dynamic.tflite"
-    ),
-    "int8_fixed": Path(
-        "models/optimized/ssd_mobilenet_v2_int8_fixed.tflite"
-    ),
-    "int8_calib500": Path(
-        "models/optimized/ssd_mobilenet_v2_int8_calib500.tflite"
-    ),
-    "official_int8": Path("models/optimized/ssd_mobilenet_v2_official_int8.tflite"),
-    "official_fp32": Path("models/optimized/ssd_mobilenet_v2_official_fp32.tflite"),
-    "official_int8_fast": Path("models/optimized/ssd_mobilenet_v2_official_int8_fast.tflite"),
-}
+from src.config import (
+    MODELS,
+    DATA_PATH,
+    ANNOTATIONS_PATH,
+    CALIBRATION_SEED,
+    WARMUP_RUNS,
+    get_output_dir,
+    get_experiment_params,
+    get_numeric_metrics,
+)
 
 
 def model_size_mb(path):
@@ -63,16 +45,46 @@ def model_size_mb(path):
     ) / (1024 ** 2)
 
 
+def select_evaluation_images(image_ids, sample_size, seed):
+    calibration_ids = sorted(image_ids)
+
+    calibration_rng = random.Random(CALIBRATION_SEED)
+    calibration_rng.shuffle(calibration_ids)
+
+    # Exclude the calibration images used by all model variants.
+    reserved_ids = set(
+        calibration_ids[:100] + calibration_ids[400:800]
+    )
+
+    evaluation_ids = sorted(image_ids)
+
+    evaluation_rng = random.Random(seed)
+    evaluation_rng.shuffle(evaluation_ids)
+
+    evaluation_ids = [
+        image_id
+        for image_id in evaluation_ids
+        if image_id not in reserved_ids
+    ]
+
+    if not 1 <= sample_size <= len(evaluation_ids):
+        raise ValueError(
+            f"Sample size must be between 1 and "
+            f"{len(evaluation_ids)}"
+        )
+
+    return evaluation_ids[:sample_size]
+
+
 def evaluate(sample_size, seed, variant="savedmodel"):
     coco = COCO(str(ANNOTATIONS_PATH))
-    image_ids = sorted(coco.getImgIds())
     category_ids = set(coco.getCatIds())
 
-    rng = random.Random(seed)
-    rng.shuffle(image_ids)
-
-    # Reserve 100 images for INT8 calibration.
-    image_ids = image_ids[100:100 + sample_size]
+    image_ids = select_evaluation_images(
+        coco.getImgIds(),
+        sample_size,
+        seed,
+    )
 
     model_path = MODELS[variant]
 
@@ -88,6 +100,7 @@ def evaluate(sample_size, seed, variant="savedmodel"):
         model = load_official_model(model_path)
         inference = detect_official
         backend = "tflite"
+
     else:
         model = load_tflite_model(model_path)
         inference = detect_tflite
@@ -108,7 +121,7 @@ def evaluate(sample_size, seed, variant="savedmodel"):
     if image is None:
         raise ValueError("Cannot read warm-up image")
 
-    for _ in range(5):
+    for _ in range(WARMUP_RUNS):
         inference(model, image)
 
     # Benchmark
@@ -203,6 +216,20 @@ def evaluate(sample_size, seed, variant="savedmodel"):
     return metrics, image_ids, detections
 
 
+def save_results(output, metrics, image_ids, detections):
+    output.mkdir(parents=True, exist_ok=True)
+
+    artifacts = {
+        "metrics.json": metrics,
+        "image_ids.json": image_ids,
+        "predictions.json": detections,
+    }
+
+    for filename, content in artifacts.items():
+        with open(output / filename, "w") as file:
+            json.dump(content, file, indent=2)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Evaluate SSD MobileNet V2 on COCO"
@@ -226,11 +253,17 @@ def main():
         default="savedmodel"
     )
 
+    parser.add_argument(
+        "--no-mlflow",
+        action="store_true",
+        help="Disable MLflow experiment tracking"
+    )
+
     args = parser.parse_args()
 
-    if not 1 <= args.samples <= 4900:
+    if not 1 <= args.samples <= 4500:
         parser.error(
-            "--samples must be between 1 and 4900"
+            "--samples must be between 1 and 4500"
         )
 
     metrics, image_ids, detections = evaluate(
@@ -239,27 +272,41 @@ def main():
         args.model
     )
 
-    output = Path(
-        "outputs/baseline"
-        if args.model == "savedmodel"
-        else f"outputs/tflite_{args.model}"
+    output = get_output_dir(args.model)
+
+    save_results(
+        output,
+        metrics,
+        image_ids,
+        detections,
     )
-
-    output.mkdir(parents=True, exist_ok=True)
-
-    artifacts = {
-        "metrics.json": metrics,
-        "image_ids.json": image_ids,
-        "predictions.json": detections,
-    }
-
-    for filename, content in artifacts.items():
-        with open(output / filename, "w") as file:
-            json.dump(content, file, indent=2)
 
     print(f"\n{args.model} evaluation metrics:")
     print(json.dumps(metrics, indent=2))
     print(f"\nResults saved to {output}")
+
+    if not args.no_mlflow:
+        from src.tracking import log_experiment
+
+        params = get_experiment_params(
+            args.model,
+            metrics,
+            source="evaluation",
+        )
+
+        params["evaluation_split"] = "exclude_all_calibration"
+
+        numeric_metrics = get_numeric_metrics(metrics)
+
+        print("\nLogging evaluation to MLflow...")
+
+        log_experiment(
+            variant=args.model,
+            params=params,
+            metrics=numeric_metrics,
+            model_path=MODELS[args.model],
+            output_dir=output,
+        )
 
 
 if __name__ == "__main__":

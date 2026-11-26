@@ -4,9 +4,13 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "matplotlib>=3.11.2",
+    "mlflow==2.22.0",
     "numpy==1.26.4",
     "opencv-python-headless==4.10.0.84",
     "pillow>=13.0.0",
+    "psutil>=7.2.2",
     "pycocotools>=2.0.11",
+    "sqlalchemy==2.0.40",
     "tensorflow==2.16.1",
+    "tqdm>=4.70.1",
 ]

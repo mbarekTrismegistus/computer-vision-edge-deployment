@@ -16,6 +16,7 @@ from src.tflite_inference import (
     load_tflite_model,
     detect_tflite,
 )
+from src.official_inference import load_official_model, detect_official
 
 
 DATA_PATH = Path("data/raw/val2017")
@@ -34,6 +35,18 @@ MODELS = {
     "int8": Path(
         "models/optimized/ssd_mobilenet_v2_int8.tflite"
     ),
+    "int8_dynamic": Path(
+        "models/optimized/ssd_mobilenet_v2_int8_dynamic.tflite"
+    ),
+    "int8_fixed": Path(
+        "models/optimized/ssd_mobilenet_v2_int8_fixed.tflite"
+    ),
+    "int8_calib500": Path(
+        "models/optimized/ssd_mobilenet_v2_int8_calib500.tflite"
+    ),
+    "official_int8": Path("models/optimized/ssd_mobilenet_v2_official_int8.tflite"),
+    "official_fp32": Path("models/optimized/ssd_mobilenet_v2_official_fp32.tflite"),
+    "official_int8_fast": Path("models/optimized/ssd_mobilenet_v2_official_int8_fast.tflite"),
 }
 
 
@@ -70,6 +83,11 @@ def evaluate(sample_size, seed, variant="savedmodel"):
         model = load_model()
         inference = detect
         backend = "savedmodel"
+
+    elif variant.startswith("official_"):
+        model = load_official_model(model_path)
+        inference = detect_official
+        backend = "tflite"
     else:
         model = load_tflite_model(model_path)
         inference = detect_tflite

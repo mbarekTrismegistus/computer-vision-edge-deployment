@@ -1,0 +1,6 @@
+outs:
+- md5: b55fb97419522847eed86b26472e0681.dir
+  size: 58246809
+  nfiles: 7
+  hash: md5
+  path: ssd_mobilenet_v2_320x320_coco17_tpu-8

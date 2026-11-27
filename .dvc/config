@@ -1,0 +1,4 @@
+[core]
+    remote = storage
+['remote "storage"']
+    url = ssh://ubuntu@141.145.208.139/home/ubuntu/dvc-storage/computer-vision-edge-deployment

@@ -1,0 +1,6 @@
+outs:
+- md5: dfd8360b6375dd27baf4291e0add6adf.dir
+  size: 105044668
+  nfiles: 9
+  hash: md5
+  path: optimized

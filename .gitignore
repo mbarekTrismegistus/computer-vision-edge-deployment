@@ -1,4 +1,5 @@
 .venv/
+.venv-edge/
 *.zip
 *.tar.gz
 __pycache__/

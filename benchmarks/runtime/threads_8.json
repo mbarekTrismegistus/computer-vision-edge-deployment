@@ -1,0 +1,14 @@
+{
+  "runtime": "tflite-runtime",
+  "threads": 8,
+  "benchmark_runs": 100,
+  "warmup_runs": 5,
+  "image": "000000000139.jpg",
+  "model_size_mb": 6.408500671386719,
+  "load_time_ms": 5.638190999889048,
+  "mean_latency_ms": 282.78864548994534,
+  "p95_latency_ms": 328.7182746997132,
+  "inference_fps": 3.536209872455984,
+  "rss_mb": 77.9765625,
+  "cpu_percent": 342.4789870315711
+}

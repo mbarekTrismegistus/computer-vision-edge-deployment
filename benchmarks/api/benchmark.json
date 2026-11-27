@@ -1,0 +1,18 @@
+{
+  "total_requests": 100,
+  "successful_requests": 100,
+  "failed_requests": 0,
+  "success_rate_percent": 100.0,
+  "mean_http_latency_ms": 153.64505693016326,
+  "p50_latency_ms": 146.95294100056344,
+  "p95_latency_ms": 184.52436515044607,
+  "p99_latency_ms": 199.22365643065882,
+  "mean_inference_ms": 144.7153,
+  "mean_processing_ms": 147.0603,
+  "mean_http_overhead_ms": 6.584756930163252,
+  "requests_per_second": 6.5033832428702185,
+  "mean_rss_mb": 106.66796875,
+  "max_sampled_rss_mb": 106.66796875,
+  "cpu_percent": 203.62092933426658,
+  "duration_seconds": 15.37661187500089
+}

@@ -1,11 +1,13 @@
 .venv/
-data/raw/
-models/
 *.zip
 *.tar.gz
-ssd_mobilenet_v2.tar.gz
 __pycache__/
 outputs/
+
+# Intermediate model exports
+/models/tflite_export/
+/models/tflite_export_fast/
+
 # MLflow
 mlruns/
 mlartifacts/
